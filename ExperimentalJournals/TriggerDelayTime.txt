@@ -1,0 +1,18 @@
+Experiment journal:
+
+Date: 2/9-14, 11:00
+
+Author: Christian Buhl
+
+Aim of experiment: Measure the approximate deadtime of the triggercircuit from input(scope) to input(electrometer).
+
+Experimental setup:
+PULSE GENERATOR: Set to trigger on internal clock, a few times per second. Bipolar output, A) going to multimeter, B) going to channel 2 on scope. No time setting errors, and an amplitude of about 1.5V. Offset adjusted to roughly 0, by connecting A) to the scope and adjusting to within +/- 20mV.
+SCOPE: Input on ch2, 1M input impedance, triggering on falling edge of inverted signal, trigger level roughly -750mV. Pulse width timing measured with built-in function. 1V/5ms per division.
+KEITHLEY: Measure trigger asynchronously on triglink input 5, Arm immediate, Initiate continuous. Range 2V.
+
+Method: By decreasing the pulsewidth, it is seen when the voltage measurement starts dropping. This corresponds to the delay through the system, from triggering the scope, via sending external trigger signal, to triggering the Keithley measurement.
+
+Results: A rapid drop in the voltage measurement is beginning to be seen more than 1/10 times, at around 17ms. 
+
+Further observations: It is possible to achieve consistent triggered measurements, to within the accuracy of the scope as a reference, with the mentioned setup, and a longer pulse length (roughly 20ms at the end of measurement). Furthermore, a long term time dependency has been noticed, as the delay was initially around 20ms, and dropped to about 17ms. The timescale for this shift is roughly 15minutes.
