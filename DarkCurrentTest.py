@@ -29,9 +29,10 @@ class darkcurrent:
         self.TotalOutArrayLine = 0 #Takes care of the row number of the out array. (Individual
                                     #voltages, basically)
         self.PreviousVoltage = 0
-        self.StartVoltage = 50
-        self.EndVoltage = 70
-        self.StepVoltage = 2
+        self.StartVoltage = 60
+        self.EndVoltage = 180
+        self.StepVoltage = 10
+        self.VoltageIncreased = False
         self.nUpdates = (self.EndVoltage - self.StartVoltage)/self.StepVoltage
         self.newData = False
         self.CondensedOutArray = np.zeros(int((self.EndVoltage - self.StartVoltage)/self.StepVoltage)+5)
@@ -39,6 +40,7 @@ class darkcurrent:
         self.PlotSetup()
         self.KeithleySetup()
         KillSignal = False
+        self.filename = 'MeasurementDarkCurrent'+str(int(tm.time()))
         
         
         #Setup the keithley to: 
@@ -57,12 +59,12 @@ class darkcurrent:
         self.kt.write('*cls')
         self.kt.write('system:zcheck 0')
         self.kt.write('sense:function \'current\'')
-        self.kt.write('sense:current:range 2e-6')
+        self.kt.write('sense:current:range 2e-5')
         tm.sleep(3)
         self.kt.write('sense:current:nplc 10')
-        self.kt.write('sense:current:digits 6')
+        self.kt.write('sense:current:digits 7')
         self.kt.write('calculate:state 0')
-        self.kt.write('system:lsync:state 0') 
+        #self.kt.write('system:lsync:state 0') 
         
         #Setup voltage source, initialise at 0.
         self.kt.write('source:voltage:mconnect 1')
@@ -82,13 +84,19 @@ class darkcurrent:
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111)
         self.line, = self.ax.semilogy(abs(self.TotalOutArray['t']), abs(self.TotalOutArray['i']), 'x')
-        plt.ylim(0, 2e-8)
+        plt.ylim(5e-11, 2e-8)
         plt.xlim(tm.time(), tm.time() + 60 * self.nUpdates)
         
         
     def Measure(self):
         #print self.TotalOutArray
-        measurement = self.kt.ask_for_values('fetch?')
+        try: 
+            measurement = self.kt.ask_for_values('fetch?')
+        except(pv.VisaIOError):
+            print 'A problem has arisen. Waiting a bit, and clearing communication channels'
+            self.kt.write('*cls')  #Clears error queue if something goes wrong.
+            tm.sleep(2)
+            self.kt.write('*cls') # just to be sure..
         self.CondensedOutArray[self.TotalOutArrayLine] = measurement[0]
         # Appending the present current measurement and time:
         u = self.kt.ask_for_values('source:voltage?')[0]
@@ -97,19 +105,18 @@ class darkcurrent:
         Addition = pd.DataFrame({'u': [u], 'i': [i], 't':[t]}, columns = ['u','i','t'])
         self.TotalOutArray = self.TotalOutArray.append(Addition, ignore_index = True)
         self.newData = True
-        #print u, i, t
-        #pass
-        #Make a one shot measurement of the current, averaged a bit, with the keithley.
+        
+        #Increase sensitivity if the measurement comes below 1e-9A:
+        if measurement[0] < 1e-9 and self.VoltageIncreased == True:
+            self.kt.write('sense:current:range 1e-8') #one order of magnitude is given in spare.
+            self.VoltageIncreased = False
     
     def Replot(self):
         print 'Redrawing plot'
         self.points.set_data(self.TotalOutArray['u'], self.TotalOutArray['i'])
-        #self.points.set_ydata(self.TotalOutArray['i'])
         plt.draw()
-        #print self.TotalOutArray['u'], self.TotalOutArray['i']
         plt.pause(0.1)
         tm.sleep(1)
-        #pass
         #Update the plot to reflect the new changes.
     
     def UpdateParameters(self):
@@ -119,12 +126,13 @@ class darkcurrent:
             self.kt.write('source:voltage '+str(self.PresentVoltage))
             #Increment the TotalOutArrayLine count.
             self.TotalOutArrayLine = self.TotalOutArrayLine + 1
-            #Reset PresentOutArray
-            #print 'Voltage updated: ', self.PresentVoltage, 'volts'
+            #increase the dynamic range again.
+            self.kt.write('sense:current:range 2e-5')
+            self.VoltageIncreased = True
 
         #If no updates are detected:
         self.PreviousVoltage = self.PresentVoltage
-        #print 'Nothing Changed, voltage = ', self.PresentVoltage
+        
         #Check for haywire current
         self.DetectHaywire()
     
@@ -132,16 +140,42 @@ class darkcurrent:
         #Implementation of stop signal:
         if self.STOPSIGNAL != True:    
             self.PresentVoltage = np.arange(self.StartVoltage,
-                        self.EndVoltage, self.StepVoltage)[self.TotalOutArrayLine] 
+                        self.EndVoltage, self.StepVoltage)[self.TotalOutArrayLine]
+                        
+            #Terminates the program cleanly, at the end of the measurement.
+            if self.TotalOutArrayLine > self.nUpdates-1:
+                self.STOPSIGNAL = True
+                KillSignal = True
             #Start Voltage, Stop Voltage, Step Voltage
             #print 'The present voltage changes to ', self.PresentVoltage, 'volts'
+            
+            self.TotalOutArray.to_pickle(self.filename)
         
         
     def DetectHaywire(self):
         #Simulate Haywire Signal:
         #if  np.max(self.CondensedOutArray) > 1e-6:
          #   self.STOPSIGNAL = True
-            
+
+        ''' Detect haywire on the previous few measurements increasing'''
+        HaywireCount = 0
+        for i in np.diff(self.TotalOutArray['i'][-16:]): #More than 2/3 of the measurements must be increasing  to trigger.
+            # In the case that one of the entries are more than 0:
+            if i > 0:
+                HaywireCount = HaywireCount + 1
+        if HaywireCount > 5: 
+            print 'Warning. Positive di/dt detected. ', HaywireCount,'/10' 
+        if HaywireCount > 10 and sum(self.TotalOutArray['i'][-2:] > 1e-8):
+            print '\n\n\t ERROR. HAYWIRE DETECTED \n\t Script stopped.\n'
+            self.STOPSIGNAL = True
+            KillSignal = True
+        
+        '''Detect haywire on maximum current (1mA)'''
+        if 1 > np.max(self.TotalOutArray['i']) > 1e-4:
+            print '\n\n\t ERROR. ABOVE MAX CURRENT DETECTED.\n\t Script stopped.\n'
+            self.STOPSIGNAL = True
+            KillSignal = True
+         
         #Be ready to react on the stopsignal.
         if self.STOPSIGNAL == True:
             #self.PresentVoltage = 0 #It should be considered if it isn't nice to know.
@@ -151,6 +185,7 @@ class darkcurrent:
         
 
         
+
 
 dc = darkcurrent()
     
@@ -165,12 +200,12 @@ msre = do_every (1, dc.Measure)
 
 tm.sleep(0.25)
 # Update the voltage. This is basically the time at each plateau
-cv = do_every (60, dc.ChangeVoltage, dc.nUpdates)
+cv = do_every (1800, dc.ChangeVoltage, dc.nUpdates) #240 is 4 minutes
 
 
 # Replot the output when there's new data
 plt.ion()
-while True: #dc.TotalOutArrayLine + 10 < dc.nUpdates:
+while KillSignal == False and dc.STOPSIGNAL == False: #dc.TotalOutArrayLine + 10 < dc.nUpdates:
     if dc.newData == True:
         dc.line.set_xdata(dc.TotalOutArray['t'])
         dc.line.set_ydata(dc.TotalOutArray['i'])
@@ -178,9 +213,9 @@ while True: #dc.TotalOutArrayLine + 10 < dc.nUpdates:
         dc.fig.canvas.flush_events()
         plt.pause(0.1)
         dc.newData = False
-        print 'New data in array'
+        #print 'New data in array'
         
         
 KillSignal = True
-plt.ioff()   
+plt.ioff()
 raw_input('\n\n\n\tScript finished. Press enter to exit...\n\n\n')
