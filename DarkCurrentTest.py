@@ -20,6 +20,29 @@ def do_every (interval, worker_func, iterations = 0):
     #return handle
   
   
+def sendmail(body):
+    import smtplib
+    from email.MIMEMultipart import MIMEMultipart
+    from email.MIMEText import MIMEText
+    fromaddr = 'experimentdummy@gmail.com'
+    toaddr = 'c.buhl@cern.ch'
+    msg = MIMEMultipart()
+    msg['From'] = fromaddr
+    msg['To'] = toaddr
+    msg['Subject'] = 'Experiment Email Notification'
+    msg.attach(MIMEText(body, 'plain'))
+   
+   
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.ehlo()
+    server.starttls()
+    server.ehlo()
+    server.login('experimentdummy', 'yourpetsname')
+    text = msg.as_string()
+    server.sendmail(fromaddr, toaddr, text)
+
+  
+  
 class darkcurrent:
     def __init__(self):
         self.PresentOutArray = []
@@ -32,7 +55,8 @@ class darkcurrent:
         self.StartVoltage = 60
         self.EndVoltage = 180
         self.StepVoltage = 10
-        self.Voltages = np.arange(self.StartVoltage, self.EndVoltage, self.StepVoltage)
+        #The weird addition is to get the last datapoint measured as well.
+        self.Voltages = np.arange(self.StartVoltage, self.EndVoltage+self.StepVoltage, self.StepVoltage)
         self.VoltageIncreased = False
         self.nUpdates = int((self.EndVoltage - self.StartVoltage)/self.StepVoltage)
         self.newData = False
@@ -70,6 +94,7 @@ class darkcurrent:
         #Setup voltage source, initialise at 0.
         self.kt.write('source:voltage:mconnect 1')
         self.kt.write('source:voltage 0')
+        self.kt.write('source:voltage:range '+str(self.EndVoltage))
         self.kt.write('output 1')
         #Generate reference measurement:
         #self.kt.write('sense:current:reference:state 1')
@@ -227,4 +252,5 @@ while KillSignal == False and dc.STOPSIGNAL == False: #dc.TotalOutArrayLine + 10
         
 KillSignal = True
 plt.ioff()
+sendmail('Experiment finished succesfully')
 raw_input('\n\n\n\tScript finished. Press enter to exit...\n\n\n')
