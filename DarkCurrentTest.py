@@ -32,8 +32,9 @@ class darkcurrent:
         self.StartVoltage = 60
         self.EndVoltage = 180
         self.StepVoltage = 10
+        self.Voltages = np.arange(self.StartVoltage, self.EndVoltage, self.StepVoltage)
         self.VoltageIncreased = False
-        self.nUpdates = (self.EndVoltage - self.StartVoltage)/self.StepVoltage
+        self.nUpdates = int((self.EndVoltage - self.StartVoltage)/self.StepVoltage)
         self.newData = False
         self.CondensedOutArray = np.zeros(int((self.EndVoltage - self.StartVoltage)/self.StepVoltage)+5)
         self.STOPSIGNAL = False
@@ -129,6 +130,7 @@ class darkcurrent:
             #increase the dynamic range again.
             self.kt.write('sense:current:range 2e-5')
             self.VoltageIncreased = True
+            print 'Voltage increased to ' + str(self.PresentVoltage)
 
         #If no updates are detected:
         self.PreviousVoltage = self.PresentVoltage
@@ -138,14 +140,20 @@ class darkcurrent:
     
     def ChangeVoltage(self): #DONE! Wouhuu!
         #Implementation of stop signal:
-        if self.STOPSIGNAL != True:    
-            self.PresentVoltage = np.arange(self.StartVoltage,
-                        self.EndVoltage, self.StepVoltage)[self.TotalOutArrayLine]
-                        
-            #Terminates the program cleanly, at the end of the measurement.
-            if self.TotalOutArrayLine > self.nUpdates-1:
+        if self.STOPSIGNAL != True:
+            try:
+                self.PresentVoltage = self.Voltages[self.TotalOutArrayLine]
+            except(IndexError):
+                print 'End of voltage list reached.'
                 self.STOPSIGNAL = True
                 KillSignal = True
+                self.kt.write('output 0')
+                        
+            #Terminates the program cleanly, at the end of the measurement.
+            '''if self.TotalOutArrayLine > self.nUpdates-1:
+                self.STOPSIGNAL = True
+                KillSignal = True
+                self.kt.write('output 0')'''
             #Start Voltage, Stop Voltage, Step Voltage
             #print 'The present voltage changes to ', self.PresentVoltage, 'volts'
             
@@ -164,8 +172,9 @@ class darkcurrent:
             if i > 0:
                 HaywireCount = HaywireCount + 1
         if HaywireCount > 5: 
-            print 'Warning. Positive di/dt detected. ', HaywireCount,'/10' 
-        if HaywireCount > 10 and sum(self.TotalOutArray['i'][-2:] > 1e-8):
+            #print 'Warning. Positive di/dt detected. ', HaywireCount,'/10' 
+            pass
+        if HaywireCount > 10 and sum(self.TotalOutArray['i'][-2:] > 1e-5):
             print '\n\n\t ERROR. HAYWIRE DETECTED \n\t Script stopped.\n'
             self.STOPSIGNAL = True
             KillSignal = True
@@ -200,7 +209,7 @@ msre = do_every (1, dc.Measure)
 
 tm.sleep(0.25)
 # Update the voltage. This is basically the time at each plateau
-cv = do_every (1800, dc.ChangeVoltage, dc.nUpdates) #240 is 4 minutes
+cv = do_every (1800, dc.ChangeVoltage) #240 is 4 minutes
 
 
 # Replot the output when there's new data
