@@ -234,7 +234,7 @@ msre = do_every (1, dc.Measure)
 
 tm.sleep(0.25)
 # Update the voltage. This is basically the time at each plateau
-cv = do_every (1800, dc.ChangeVoltage) #240 is 4 minutes
+cv = do_every (3600, dc.ChangeVoltage) #240 is 4 minutes
 
 
 # Replot the output when there's new data
