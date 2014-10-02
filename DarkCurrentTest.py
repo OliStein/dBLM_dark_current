@@ -130,6 +130,7 @@ class darkcurrent:
         self.kt.write('trigger:source immediate')
         #The beginning of everything. Widely regarded as a bad move.
         self.kt.write('initiate:continuous 1')
+        tm.sleep(3)
 
 
     def PlotSetup(self):
