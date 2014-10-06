@@ -5,7 +5,6 @@ import pandas as pd
 
 def list2pandas(inputVector):
     output = pd.DataFrame(columns = ['U','hr','min','sec','ukendt','yr', 'Nmeas'])
-    nentries = int(len(inputVector)/7)  #The length of the vector
     output['U'] = inputVector[0::7]
     output['hr'] = inputVector[1::7]
     output['min'] = inputVector[2::7]

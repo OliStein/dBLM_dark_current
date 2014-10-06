@@ -16,9 +16,30 @@ class icBLM:
     #Generate various arrays for measurement.
     
     #Setup Keithley for measurement.
-    #   It should take four measurements on external trigger
-    #   Download to the pc, save the data,
-    #   and wait for the next trigger.
+    rm = pv.ResourceManager()
+    kt = rm.get_instrument('GPIB::24')
+    kt.write('*IDN?')
+    print '\n\n\n', kt.read(), 'is initiated - Prepare for vogon poetry!\n\n\n'
+    kt.write('*rst')
+    kt.write('*cls')
+    #Setup system stuff
+    kt.write('system:zcheck 0')
+    kt.write('sense:function \'charge\'')
+    kt.write('sense:charge:range 2e-9')
+    kt.write('sense:charge:nplc 0.01')
+    kt.write('sense:charge:digits 7')
+    kt.write('calculate:state 0')
+    #kt.write(':display:enable 0')
+    #Trigger setup:
+    kt.write(':arm:layer1:source immediate')
+    kt.write(':arm:layer2:count 10') #The number is very important here!
+    kt.write(':arm:layer2:source tlink')
+    kt.write(':arm:layer2:tconfigure:asynchronous:iline 5') #Set the input
+    # line for the triglink
+    kt.write(':trigger:count 10')
+    #kt.write('initiate:continuous 1')
+    kt.write('trace:points 100')
+    kt.write('trace:feed:control next')
     
     #Setup plot for showing. It's still undecided what it should show.
     #   I'm thinking two plots on top of each other, one with the primary value,
