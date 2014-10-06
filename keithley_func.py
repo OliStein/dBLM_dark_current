@@ -16,8 +16,13 @@ def list2pandas(inputVector):
     
 def list2pandasRelative(inputVector):
     output = pd.DataFrame(columns = ['U','sec','Nmeas'])
-    nentries = int(len(inputVector)/3)  #The length of the vector
     output['U'] = inputVector[0::3]
     output['sec'] = inputVector[1::3]
     output['Nmeas'] = inputVector[2::3]
     return output
+    
+def list2pandasCharge(inputVector):
+    inBetween = pd.DataFrame(columns = ['Q', 't'])
+    inBetween['Q'] = inputVector[0::3]
+    inBetween['t'] = inputVector[1::3]
+    return inBetween
