@@ -64,10 +64,10 @@ class icBLM:
     #Setup plot for showing. It's still undecided what it should show.
     #   I'm thinking two plots on top of each other, one with the primary value,
     #   and one with the background offset signal (The latter three)
-    
+filename = 'Measurement_icBLM'+str(int(tm.time()))
 ic = icBLM()
 nMeasurement = 0
-while nMeasurement < 1: #Important setting - the maximum number of samples wanted per run.
+while nMeasurement < 1: #Important setting - the maximum number of measurements wanted per run.
     ic.kt.write('trace:feed:control next')
     ic.kt.write('init')
     isMeasuring = True
@@ -90,7 +90,7 @@ while nMeasurement < 1: #Important setting - the maximum number of samples wante
         except IndexError:
             pass
     nMeasurement = nMeasurement + 1
-    
+    ic.outArray.to_pickle(filename)
 
 
 plt.plot(ic.outArray['t'], ic.outArray['Q'], 'x')
