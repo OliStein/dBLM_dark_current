@@ -20,7 +20,7 @@ class icBLM:
                                  columns = ['Q', 't'])
         
         self.TriggersPerMeasurement = 12
-        self.SamplesPerTrigger =100 #Shouldn't be changed.
+        self.SamplesPerTrigger =300 #Shouldn't be changed.
         self.SamplesPerMeasurement = self.TriggersPerMeasurement*self.SamplesPerTrigger
         
         
@@ -33,6 +33,8 @@ class icBLM:
         self.kt.write('*cls')
         #Setup system stuff
         self.kt.write('system:zcheck 0')
+        self.kt.write('system:zcheck 1')
+        self.kt.write('system:zcheck 0')
         self.kt.write('system:lsync:state 0')
         self.kt.write('sense:function \'charge\'')
         self.kt.write('sense:charge:range 2e-6')
@@ -40,6 +42,8 @@ class icBLM:
         self.kt.write('sense:charge:digits 7')
         self.kt.write('calculate:state 0')
         self.kt.write(':display:enable 0')
+        self.kt.write(':charge:adischarge:state 1')
+        self.kt.write(':charge:adischarge:level 1.0e-8')
         
         #Trigger setup:
         self.kt.write(':arm:layer1:source immediate')
