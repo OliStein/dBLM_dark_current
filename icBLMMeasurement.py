@@ -15,11 +15,11 @@ global KillSignal
 class icBLM:
     def __init__(self):
         #Generate various arrays for measurement.
-        self.outArray = pd.DataFrame({'Q':[1e-20],
-                                 't':[0]},#tm.time()]},
+        self.outArray = pd.DataFrame({'Q':[],
+                                 't':[]},#tm.time()]},
                                  columns = ['Q', 't'])
         
-        self.TriggersPerMeasurement = 12
+        self.TriggersPerMeasurement = 50
         self.SamplesPerTrigger =300 #Shouldn't be changed.
         self.SamplesPerMeasurement = self.TriggersPerMeasurement*self.SamplesPerTrigger
         
@@ -37,7 +37,7 @@ class icBLM:
         self.kt.write('system:zcheck 0')
         self.kt.write('system:lsync:state 0')
         self.kt.write('sense:function \'charge\'')
-        self.kt.write('sense:charge:range 2e-6')
+        self.kt.write('sense:charge:range 2e-8')
         self.kt.write('sense:charge:nplc 0.01')
         self.kt.write('sense:charge:digits 7')
         self.kt.write('calculate:state 0')
@@ -80,14 +80,14 @@ while nMeasurement < 1: #Important setting - the maximum number of measurements 
         n = bin(int(str(ic.kt.ask(':status:measurement:event?'))[:-1]))[2:]
         try:
             if n[-10] == '1':
-                print 'Maaling faerdiggjort - gemmer i array'
+                print 'Measurement finished - saving in array as ' + filename
                 #Functionality for saving the recently measured array in the large array.
                 #
                 #
                 # ##################
                 #
                 #
-                q = kf.list2pandasCharge(ic.kt.ask_for_values('trace:data?'))
+                q = kf.list2pandasCharge(ic.kt.ask_for_values('trace:data?'), t0)
                 ic.outArray = ic.outArray.append(q, ignore_index = True)
                 isMeasuring = False #Ends the loop.
                 

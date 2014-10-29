@@ -21,8 +21,9 @@ def list2pandasRelative(inputVector):
     output['Nmeas'] = inputVector[2::3]
     return output
     
-def list2pandasCharge(inputVector):
+def list2pandasCharge(inputVector, t0):
     inBetween = pd.DataFrame(columns = ['Q', 't'])
     inBetween['Q'] = inputVector[0::3]
     inBetween['t'] = inputVector[1::3]
+    inBetween['t'] = inBetween['t'] + t0
     return inBetween
